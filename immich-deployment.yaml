@@ -1,0 +1,205 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: immich-server
+  name: immich-server
+spec:
+  type: NodePort
+  ports:
+    - name: "3001"
+      port: 3001
+      targetPort: 3001
+  selector:
+    app: immich-server
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: immich-server-upload
+  name: immich-server-upload
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: immich-postgresql-data
+  name: immich-postgresql-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  labels:
+    app: immich
+  name: immich-redis-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: immich-server
+  name: immich-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: immich-server
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: immich-server
+    spec:
+      containers:
+        - env:
+            - name: TZ
+              value: Etc/UTC
+            - name: DB_HOSTNAME
+              value: 127.0.0.1
+            - name: DB_DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_DATABASE_NAME
+                  name: immich-env
+            - name: DB_DATA_LOCATION
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_DATA_LOCATION
+                  name: immich-env
+            - name: DB_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_PASSWORD
+                  name: immich-env
+            - name: DB_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_USERNAME
+                  name: immich-env
+            - name: REDIS_HOSTNAME
+              value: 127.0.0.1
+            - name: IMMICH_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  key: IMMICH_VERSION
+                  name: immich-env
+            - name: UPLOAD_LOCATION
+              valueFrom:
+                configMapKeyRef:
+                  key: UPLOAD_LOCATION
+                  name: immich-env
+            - name: IMMICH_MACHINE_LEARNING_ENABLED
+              value: "false"
+          image: ghcr.io/immich-app/immich-server:release
+          name: immich-server
+          ports:
+            - containerPort: 3001
+              hostPort: 3001
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /usr/src/app/upload
+              name: immich-server-upload
+        - args:
+            - postgres
+            - -c
+            - shared_preload_libraries=vectors.so
+            - -c
+            - search_path="$(user)", public, vectors
+            - -c
+            - logging_collector=on
+            - -c
+            - max_wal_size=2GB
+            - -c
+            - shared_buffers=512MB
+            - -c
+            - wal_compression=on
+          env:
+            - name: DB_DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_DATABASE_NAME
+                  name: immich-env
+            - name: DB_DATA_LOCATION
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_DATA_LOCATION
+                  name: immich-env
+            - name: DB_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_PASSWORD
+                  name: immich-env
+            - name: DB_USERNAME
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_USERNAME
+                  name: immich-env
+            - name: IMMICH_VERSION
+              valueFrom:
+                configMapKeyRef:
+                  key: IMMICH_VERSION
+                  name: immich-env
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_DATABASE_NAME
+                  name: immich-env
+            - name: POSTGRES_INITDB_ARGS
+              value: --data-checksums
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_PASSWORD
+                  name: immich-env
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  key: DB_USERNAME
+                  name: immich-env
+            - name: UPLOAD_LOCATION
+              valueFrom:
+                configMapKeyRef:
+                  key: UPLOAD_LOCATION
+                  name: immich-env
+          image: tensorchord/pgvecto-rs:pg14-v0.2.0
+          name: immich-postgres
+          ports:
+            - containerPort: 5432
+              hostPort: 5432
+              protocol: TCP
+          volumeMounts:
+            - mountPath: /var/lib/postgresql/data
+              name: immich-postgresql-data
+        - image: redis:6.2-alpine
+          name: immich-redis
+          ports:
+            - containerPort: 6379
+              hostPort: 6379
+              protocol: TCP
+      volumes:
+        - name: immich-server-upload
+          persistentVolumeClaim:
+            claimName: immich-server-upload
+        - name: immich-postgresql-data
+          persistentVolumeClaim:
+            claimName: immich-postgresql-data
