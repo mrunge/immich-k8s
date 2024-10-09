@@ -3,6 +3,8 @@ kind: Kustomization
 metadata:
   labels:
     app: immich
+namespace: immich
 resources:
+  - namespace.yaml
   - immich-env-configmap.yaml
   - immich-deployment.yaml

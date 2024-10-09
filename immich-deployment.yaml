@@ -5,7 +5,7 @@ metadata:
     app: immich-server
   name: immich-server
 spec:
-  type: NodePort
+  type: LoadBalancer
   ports:
     - name: "3001"
       port: 3001
@@ -22,9 +22,10 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: rook-cephfs
   resources:
     requests:
-      storage: 100Mi
+      storage: 10Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -35,9 +36,10 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: rook-cephfs
   resources:
     requests:
-      storage: 100Mi
+      storage: 500Mi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -48,9 +50,10 @@ metadata:
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: rook-cephfs
   resources:
     requests:
-      storage: 100Mi
+      storage: 500Mi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -181,7 +184,7 @@ spec:
                 configMapKeyRef:
                   key: UPLOAD_LOCATION
                   name: immich-env
-          image: tensorchord/pgvecto-rs:pg14-v0.2.0
+          image: docker.io/tensorchord/pgvecto-rs:pg14-v0.2.0
           name: immich-postgres
           ports:
             - containerPort: 5432
