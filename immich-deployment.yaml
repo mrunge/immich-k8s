@@ -8,8 +8,9 @@ spec:
   type: LoadBalancer
   ports:
     - name: "3001"
-      port: 3001
+      port: 80
       targetPort: 3001
+      protocol: TCP
   selector:
     app: immich-server
 ---
@@ -25,7 +26,7 @@ spec:
   storageClassName: rook-cephfs
   resources:
     requests:
-      storage: 10Gi
+      storage: 40Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -39,21 +40,7 @@ spec:
   storageClassName: rook-cephfs
   resources:
     requests:
-      storage: 500Mi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  labels:
-    app: immich
-  name: immich-redis-data
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: rook-cephfs
-  resources:
-    requests:
-      storage: 500Mi
+      storage: 10Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -117,7 +104,6 @@ spec:
           name: immich-server
           ports:
             - containerPort: 3001
-              hostPort: 3001
               protocol: TCP
           volumeMounts:
             - mountPath: /usr/src/app/upload
