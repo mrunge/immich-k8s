@@ -22,11 +22,11 @@ metadata:
   name: immich-server-upload
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   storageClassName: rook-cephfs
   resources:
     requests:
-      storage: 40Gi
+      storage: 60Gi
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
